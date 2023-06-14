@@ -1,39 +1,42 @@
-import cv2
+from moviepy.editor import VideoFileClip
 import os
-import math
 
-def split_video(video_path, size_limit):
-    video = cv2.VideoCapture(video_path)
-    fps = int(video.get(cv2.CAP_PROP_FPS))
-    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    
-    frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    chunk_frame_count = math.ceil(size_limit / (video.get(cv2.CAP_PROP_FRAME_COUNT) / (width * height * 3)))
+def split_video_with_audio(video_path, size_limit):
+    # Load video
+    video = VideoFileClip(video_path)
+    duration = video.duration
+    fps = video.fps
+    size_per_second = size_limit / duration
 
+    # Create output directory
     os.makedirs("output", exist_ok=True)
-    writer = None
-    chunk_index = 0
-    for i in range(frame_count):
-        ret, frame = video.read()
-        if not ret:
-            break
 
-        if i % chunk_frame_count == 0:
-            if writer is not None:
-                writer.release()
-            chunk_index += 1
-            filename = f"C:/Users/dbtmd/Videos/미래문화포럼-1GB/쪼갠파일/chunk{chunk_index}.avi"    # Output files will be in AVI format
-            writer = cv2.VideoWriter(filename, fourcc, fps, (width, height))
+    # Split video based on size limit
+    start_time = 0
+    chunk_index = 1
+    while start_time < duration:
+        # Calculate end time for current chunk
+        end_time = start_time + size_per_second / fps
 
-        writer.write(frame)
+        # Ensure end time does not exceed video duration
+        if end_time > duration:
+            end_time = duration
 
-    if writer is not None:
-        writer.release()
-    video.release()
+        # Generate output file name
+        output_file = f"output/chunk{chunk_index}.avi"
 
-video_path = "C:/Users/dbtmd/Videos/미래문화포럼-1GB/미래기술문화포럼.mp4"
-size_limit = 1 * 1024 * 1024 * 1024  # 1 GB
+        # Cut video chunk and save
+        video_chunk = video.subclip(start_time, end_time)
+        video_chunk.write_videofile(output_file, codec='libx264')
 
-split_video(video_path, size_limit)
+        # Update start time and chunk index
+        start_time = end_time
+        chunk_index += 1
+
+    print("영상을 성공적으로 분할했습니다. 확인해보세요.")
+
+# Modify the values below to match your needs
+video_path = "video.mp4"
+size_limit = 1 * 1024 * 1024 * 1024   # 1 GB
+split_video_with_audio(video_path, size_limit)
+
